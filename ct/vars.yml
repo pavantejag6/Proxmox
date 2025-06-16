@@ -1,0 +1,18 @@
+# vars.yml
+new_ct_id: 
+new_ct_name: 
+new_ip: "x.x.x.x/x"
+cores: 4
+memory: 4096
+clamav_cron:
+  minute: "0"
+  hour: "11"
+users:
+      - name: user
+        password: "{{ 'varun' | password_hash('sha512') }}"
+        shell: /bin/bash
+        groups: sudo
+      - name: 
+        password: "{{ '' | password_hash('sha512') }}"
+        shell: /bin/bash
+        groups: sudo

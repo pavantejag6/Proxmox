@@ -1,0 +1,75 @@
+- name: Configure and install services on the newly created VM
+  hosts: ct
+  become: true
+  vars_files:
+    - vars.yml
+    - secret.yml
+  tasks:
+    - block:
+
+        - name: Create txt file with paths
+          copy:
+            content: |
+              /var
+              /home
+              /tmp
+              /etc
+              /opt
+              /root
+            dest: /root/ClamScanTheseFolders.txt
+            owner: root
+            group: root
+            mode: '0644'
+
+        - name: Ensure /opt/scripts directory exists
+          file:
+            path: /opt/scripts
+            state: directory
+            mode: '0755'
+
+        - name: Copy scan.py to /opt/scripts
+          copy:
+            src: /varun/vm/scan.py
+            dest: /opt/scripts/scan.py
+            mode: '0755'
+
+        - name: Ensure cron is installed
+          ansible.builtin.package:
+            name: cron
+            state: present
+
+        - name: Ensure crontab executable is present
+          ansible.builtin.command: which crontab
+          register: crontab_path
+
+        - name: Ensure ClamAV cron job exists
+          cron:
+            name: "ClamAV Scan"
+            minute: "{{ clamav_cron.minute }}"
+            hour: "{{ clamav_cron.hour }}"
+            job: 'clamscan -r -z -i --bell --file-list=/root/ClamScanTheseFolders.txt > /root/clamscan.txt && echo "servername : $(cat /etc/hostname)" >> /root/clamscan.txt && python3 /opt/scripts/scan.py'
+            user: root
+
+        - name: Set success email variables
+          set_fact:
+            email_subject: "Ansible Playbook Succeeded"
+            email_body: |
+              The Ansible playbook has successfully completed execution.
+              Hostname: {{ new_ct_name }}
+              IP_Address: {{ new_ip  }}
+
+      rescue:
+        - name: Set failure email variables
+          set_fact:
+            email_subject: "Ansible Playbook Failed"
+            email_body: |
+              The Ansible playbook encountered an error. Please check the logs for details.
+              Hostname: {{ new_ct_name }}
+              IP_Address: {{ new_ip  }}
+              Error_Message: {{ ansible_failed_result }}
+
+#        - include_tasks: send_email.yml
+
+      always:
+        - name: Send email notification
+          include_tasks: send_email.yml

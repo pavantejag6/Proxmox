@@ -1,0 +1,12 @@
+# tasks/send_email.yml
+- name: Send an email notification
+  mail:
+    host: ""
+    port: 
+    username: "{{ username }}"
+    password: "{{ password }}"
+    from: "{{ from }}"
+    to: varun <>
+    subject: "{{ email_subject }}"
+    body: "{{ email_body }}"
+    secure: starttls

@@ -1,0 +1,5 @@
+[proxmox]
+x.x.x.x ansible_user= ansible_password=
+
+[ct]
+x.x.x.x ansible_user= ansible_password= ansible_become_password=

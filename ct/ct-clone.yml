@@ -1,0 +1,83 @@
+---
+- name: Clone a container and update its configuration
+  hosts: proxmox
+  become: yes
+  vars_files:
+    - vars.yml
+    - secret.yml
+
+  tasks:
+    - name: Clone a container
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: ''
+        clone: 
+        vmid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"
+        storage: "local-zfs"
+        state: present
+        timeout: 100
+
+    - name: Wait for the clone to complete
+      pause:
+        seconds: 30
+
+    - name: Set memory
+      shell: pct set {{ new_ct_id }} -memory {{ memory  }}
+      args:
+        executable: /bin/bash
+
+    - name: set core
+      shell: pct set {{ new_ct_id }} -cores {{ cores  }}
+      args:
+        executable: /bin/bash
+
+
+#    - name: Stop
+#      shell: pct stop {{ new_ct_id }}
+#      args:
+#        executable: /bin/bash
+
+    - name: Update container network settings
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: ''
+        vmid: "{{ new_ct_id }}"
+        hostname: "{{ new_ct_name }}"
+        netif:
+          net0: "name=eth0,ip={{ new_ip }},gw=x.x.x.x,bridge=vmbr0"
+        update: yes
+
+    - name: Start the new container
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: ""
+        vmid: "{{ new_ct_id }}"
+        state: started
+
+    - name: Wait for changes to appear
+      pause:
+        seconds: 30
+
+    - name: Update package list in the cloned container
+      ansible.builtin.command: pct exec {{ new_ct_id }} -- apt update
+      register: apt_update
+
+    - name: Reinstall SSHD in the cloned container
+      ansible.builtin.command: pct exec {{ new_ct_id }} -- apt install --reinstall openssh-server -y
+      when: apt_update.rc == 0
+      register: ssh_reinstall
+
+    - name: Start SSH service in the cloned container
+      ansible.builtin.command: pct exec {{ new_ct_id }} -- systemctl start ssh
+      when: ssh_reinstall.rc == 0
+
+    - name: Enable SSH service to start on boot
+      ansible.builtin.command: pct exec {{ new_ct_id }} -- systemctl enable ssh
+      when: ssh_reinstall.rc == 0
