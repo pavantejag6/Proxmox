@@ -1,0 +1,20 @@
+vm_name: 
+newid: 
+ip_address: x.x.x.x/x
+gateway: 172.20.10.1
+memory: 16384
+core: 4
+clamav_cron:
+  minute: "30"
+  hour: "1"
+#users:
+#      - name: varun
+#        password: "{{ 'varun' | password_hash('sha512') }}"
+#        key: ""
+#        shell: /bin/bash
+#        groups: sudo
+#      - name: 
+#        password: "{{ '' | password_hash('sha512') }}"
+#        key: ""
+#        shell: /bin/bash
+#        groups: sudo
